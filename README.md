@@ -1,23 +1,36 @@
 # MolMSAE
 
-**面向分子图的多尺度表征学习与自编码建模**
+**Multi-Scale Representation Learning and Autoencoding for Molecular Graphs**
 
-Molecular Multi-Scale AutoEncoder for structured molecular representation learning.
+MolMSAE is a molecular graph autoencoder designed to study how structural
+information is organized across multiple latent variables. It decomposes graph
+reconstruction into chemically meaningful scales and assigns a dedicated latent
+role to fragment inventory, fragment-level topology, intra-fragment structure,
+and cross-fragment attachments. The resulting representation is intended to
+support accurate reconstruction, transferable molecular features, and an
+interpretable latent organization.
 
-MolMSAE 面向分子图自编码器中的潜在表征组织问题，将分子重建拆解为相互关联的多个化学尺度，并通过固定角色的潜变量分别建模片段组成、片段间拓扑、片内原子与键结构以及跨片段连接。该设计旨在减少多潜变量之间的语义纠缠，使潜空间同时具备结构重建能力、跨任务可迁移性与可分析的化学结构。
+## Motivation
 
-## 方法概览
+Multi-token graph autoencoders are commonly optimized through a single
+reconstruction objective. Although the full latent set may reconstruct the
+input graph successfully, the objective alone does not require individual
+tokens to develop stable or complementary semantics. This can lead to highly
+shared latent directions, order-sensitive downstream interfaces, and a latent
+geometry that is difficult to interpret through chemical edits.
 
-传统多 Token 图自编码器通常仅约束整体重建结果，不保证各潜变量形成稳定、互补的语义分工。MolMSAE 在编码端保留集合式图表征能力，在解码端引入结构化的多尺度角色约束：
+MolMSAE introduces explicit scale-aware roles at the decoder boundary while
+retaining a set-based graph encoder. Each latent variable is responsible for a
+different level of molecular structure:
 
-| 潜变量 | 建模尺度 | 主要信息 |
+| Latent | Structural scale | Information represented |
 | --- | --- | --- |
-| $z_0$ | 片段组成 | 片段类别、规模与成员关系 |
-| $z_1$ | 粗粒度拓扑 | 片段之间的连接结构 |
-| $z_2$ | 片内结构 | 原子类型与片段内部化学键 |
-| $z_3$ | 跨片段连接 | 连接位点、跨片段键与局部约束 |
+| $z_0$ | Fragment inventory | Fragment types, sizes, and membership |
+| $z_1$ | Coarse topology | Connectivity between molecular fragments |
+| $z_2$ | Fragment contents | Atom types and intra-fragment bonds |
+| $z_3$ | Cross-fragment attachments | Attachment sites, bond types, and local constraints |
 
-```mermaid
+~~~mermaid
 flowchart LR
     A["Molecular graph"] --> B["Edge-aware graph encoder"]
     B --> C["Multi-scale latent tokenizer"]
@@ -30,79 +43,102 @@ flowchart LR
     Z2 --> D
     Z3 --> D
     D --> E["Reconstructed molecular graph"]
-```
+~~~
 
-解码阶段采用逐层结构化路由：每一级只能直接读取其对应的连续潜变量，并通过停止梯度的离散上下文接收前序尺度信息。这样可以在保留层次依赖的同时，避免后续潜变量绕过既定角色直接复制完整分子。
+The decoder follows a hierarchical reconstruction process. Every stage reads
+only its assigned continuous latent token and receives detached context from
+earlier structural scales. This preserves dependencies between scales while
+preventing later tokens from bypassing their assigned roles by directly
+copying the complete molecule.
 
-## 核心模块
+## Key Components
 
-- **无损层次分解**：基于桥、双连通分量与环系合并，将分子图确定性分解为片段清单、粗粒度拓扑、片内结构和跨片段连接。
-- **多尺度潜变量**：使用四个可学习查询从节点集合中提取固定宽度的图级表示，并为不同潜变量指定稳定的化学角色。
-- **结构化分层解码**：按照“片段组成 → 片段拓扑 → 片内结构 → 跨片段连接”的顺序重建分子图。
-- **潜空间诊断**：提供 Token 置换与消融、线性 CKA、有效秩、余弦相似度及 decoder Jacobian 随机投影分析。
-- **严格图张量审计**：分解结果支持固定宽度图张量的无损回组装，并隔离仅用于审计的节点编号信息，防止其成为模型的信息旁路。
+- **Lossless hierarchical factorization** uses graph bridges, biconnected
+  components, and ring-system merging to decompose a molecule into fragment
+  inventory, coarse topology, fragment contents, and cross-fragment
+  attachments.
+- **Multi-scale latent tokenization** uses four learnable queries to extract
+  fixed-width graph-level representations from contextualized atom states.
+- **Role-constrained decoding** reconstructs molecular structure in the order
+  of fragment inventory, fragment topology, intra-fragment structure, and
+  cross-fragment connectivity.
+- **Latent-space diagnostics** include token permutation and ablation, linear
+  CKA, effective rank, cosine similarity, and random-projection decoder
+  Jacobian analysis.
+- **Strict graph-tensor auditing** supports exact round-trip assembly while
+  separating serialization-only node indices from all decoder-visible model
+  inputs.
 
-## 项目结构
+## Repository Structure
 
-```text
+~~~text
 MolMSAE/
-├── configs/                 # 模型与训练配置
-├── scripts/                 # 潜空间分析脚本
+├── configs/                 # Model and training configurations
+├── scripts/                 # Latent-space analysis utilities
 ├── src/molmsae/
-│   ├── factorization.py     # 分子图多尺度无损分解
-│   ├── model.py             # 编码器、潜变量与分层解码器
-│   ├── data.py              # 数据接口与层次监督构造
-│   ├── losses.py            # 多尺度重建目标
-│   └── diagnostics.py       # 表征与敏感性诊断
-├── tests/                   # 分解、路由和诊断测试
-└── train.py                 # 训练入口
-```
+│   ├── factorization.py     # Lossless multi-scale graph decomposition
+│   ├── model.py             # Encoder, latent tokenizer, and decoder
+│   ├── data.py              # Dataset interface and target construction
+│   ├── losses.py            # Multi-scale reconstruction objectives
+│   └── diagnostics.py       # Representation and sensitivity diagnostics
+├── tests/                   # Factorization, routing, and diagnostic tests
+└── train.py                 # Training entry point
+~~~
 
-## 安装
+## Installation
 
-```bash
+~~~bash
 git clone https://github.com/Eric-YHS/MolMSAE.git
 cd MolMSAE
 pip install -e ".[dev]"
-```
+~~~
 
-## 数据格式
+## Data Format
 
-训练入口读取固定宽度的 NumPy 图张量归档，包含以下数组：
+The training pipeline reads a fixed-width NumPy graph archive with the
+following arrays:
 
-```text
+~~~text
 atom_types  [num_molecules, max_nodes]
 bond_types  [num_molecules, max_nodes, max_nodes]
 node_mask   [num_molecules, max_nodes]
-```
+~~~
 
-其中 `bond_types=0` 表示无边，邻接矩阵需保持对称，padding 节点不能与有效节点相连。层次监督由数据管线根据图结构确定性生成。
+Bond label <code>0</code> represents a non-edge. Bond matrices must be
+symmetric, and padded nodes cannot be incident to active edges. Multi-scale
+supervision is generated deterministically from each molecular graph.
 
-## 训练
+## Training
 
-```bash
+~~~bash
 python train.py \
   --config configs/pcqm4m32.yaml \
   --data /path/to/molecular_graphs.npz \
   --output outputs/pcqm4m32
-```
+~~~
 
-## 潜空间分析
+## Latent-Space Analysis
 
-将编码结果保存为 `[samples, 4, latent_dim]` 的 NumPy 数组后，可直接生成多尺度表征统计：
+After exporting encoded representations as a NumPy array with shape
+<code>[samples, 4, latent_dim]</code>, latent organization can be summarized
+with:
 
-```bash
+~~~bash
 python scripts/analyze_latent.py outputs/latents.npy \
   --output outputs/latent_report.json
-```
+~~~
 
-报告包含联合与逐 Token 有效秩、Token 间线性 CKA 及余弦相似度矩阵，可用于分析潜变量的互补性和有效容量。
+The report contains joint and per-token effective rank, pairwise linear CKA,
+and token cosine similarity. These measurements characterize semantic overlap,
+complementarity, and effective latent capacity.
 
-## 测试
+## Tests
 
-```bash
+~~~bash
 pytest
-```
+~~~
 
-测试覆盖环系、链、分支、非连通图与稀疏 padding 等分子图结构，并验证层次分解的确定性、无损回组装和解码阶段的梯度角色隔离。
+The test suite covers rings, chains, branched molecules, disconnected graphs,
+and sparse padded tensors. It also verifies deterministic factorization, exact
+round-trip reconstruction, and gradient isolation across decoder roles.
 
