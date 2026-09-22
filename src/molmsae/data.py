@@ -12,7 +12,6 @@ from torch.utils.data import Dataset
 
 from .factorization import factorize_graph
 
-
 FRAGMENT_KIND_TO_ID = {
     "padding": 0,
     "singleton": 1,

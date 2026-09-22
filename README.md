@@ -1,5 +1,9 @@
 # MolMSAE
 
+![CI](https://github.com/Eric-YHS/MolMSAE/workflows/CI/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+
 **Multi-Scale Representation Learning and Autoencoding for Molecular Graphs**
 
 MolMSAE is a molecular graph autoencoder designed to study how structural
@@ -141,4 +145,12 @@ pytest
 The test suite covers rings, chains, branched molecules, disconnected graphs,
 and sparse padded tensors. It also verifies deterministic factorization, exact
 round-trip reconstruction, and gradient isolation across decoder roles.
+
+## Development
+
+~~~bash
+pip install -e ".[dev]"
+ruff check .        # lint (import order, unused code, modern typing)
+pytest              # unit tests
+~~~
 

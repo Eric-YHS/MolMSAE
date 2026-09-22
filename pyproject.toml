@@ -9,11 +9,28 @@ description = "Multi-scale latent representation learning and autoencoding for m
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{name = "Eric-YHS"}]
+license = {text = "MIT"}
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["molecular-graph", "autoencoder", "representation-learning", "graph-neural-network"]
 dependencies = [
   "numpy>=1.24",
   "PyYAML>=6.0",
   "torch>=2.2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Eric-YHS/MolMSAE"
+Issues = "https://github.com/Eric-YHS/MolMSAE/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -23,6 +40,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+molmsae = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
